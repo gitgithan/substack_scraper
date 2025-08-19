@@ -1,12 +1,12 @@
 """
 Purpose:
     Scrape paid subscription articles from a Substack newsletter, saving both HTML and Markdown versions.
-    You must edit BASE_URL, SITEMAP_STRING, USERNAME, and PASSWORD below to match your target newsletter and credentials.
+    You must edit BASE_URL and SITEMAP_STRING below to match your target newsletter.
 
 Instructions:
     - Set BASE_URL to the newsletter's main URL (e.g., "https://newsletter.eng-leadership.com")
     - Set SITEMAP_STRING to the sitemap path (e.g., "/sitemap.xml")
-    - Set USERNAME and PASSWORD to your Substack login credentials (if needed)
+    - Use --paid flag to enable scraping paid content (manual login required)
 """
 
 import requests
@@ -15,13 +15,9 @@ import lxml
 import markdownify
 import json
 from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.keys import Keys
 from time import sleep
+import argparse
 
-USERNAME = ""  # Your Substack email
-PASSWORD = ""  # Your Substack password
 BASE_URL = "https://newsletter.eng-leadership.com"  # Change to your newsletter base URL
 SITEMAP_STRING = "/sitemap.xml"  # Change if your sitemap path is different
 
@@ -30,11 +26,8 @@ SITEMAP_URL = BASE_URL + SITEMAP_STRING
 OUTPUT_FILE = "articles.json"
 
 
-def selenium_login(email, password, headless=True):
-    options = Options()
-    # Always use non-headless for manual login
-    print("Launching browser for manual login. Please log in, then press Enter in the terminal to continue scraping.")
-    driver = webdriver.Chrome(options=options)
+def selenium_login():
+    driver = webdriver.Chrome()
     driver.get("https://substack.com/sign-in")
     input("After you have logged in and see your account, press Enter here to continue...")
     print("Continuing with scraping...")
@@ -47,11 +40,8 @@ def get_article_urls(sitemap_url):
     return [loc.text for loc in soup.find_all("loc")]
 
 
-def scrape_article_selenium(driver, url):
-    driver.get(url)
-    sleep(0.3)
-    soup = BeautifulSoup(driver.page_source, "lxml")
-    # Prioritize paid/full content containers
+def extract_article_html_and_md(soup):
+    # Prioritize content containers
     article = soup.find("div", class_="available-content")
     if not article:
         article = soup.find("div", class_="body markup")
@@ -66,9 +56,31 @@ def scrape_article_selenium(driver, url):
     return html_content, markdown_content
 
 
+def scrape_article_selenium(driver, url):
+    driver.get(url)
+    sleep(0.3)
+    soup = BeautifulSoup(driver.page_source, "lxml")
+    return extract_article_html_and_md(soup)
+
+
+def scrape_article_requests(url):
+    resp = requests.get(url)
+    soup = BeautifulSoup(resp.content, "lxml")
+    return extract_article_html_and_md(soup)
+
+
 def main():
-    print("Logging in with Selenium...")
-    driver = selenium_login(USERNAME, PASSWORD, headless=False)
+    parser = argparse.ArgumentParser(description="Substack scraper")
+    parser.add_argument("--paid", action="store_true", help="Enable scraping paid content (manual login required)")
+    args = parser.parse_args()
+
+    driver = None
+    if args.paid:
+        print("Paid mode enabled. Manual login required.")
+        driver = selenium_login()
+    else:
+        print("Paid mode not enabled. Scraping free content only.")
+
     print("Fetching sitemap...")
     urls = get_article_urls(SITEMAP_URL)
     print(f"Found {len(urls)} articles.")
@@ -92,10 +104,12 @@ def main():
         else:
             os.makedirs(folder, exist_ok=True)
     results = []
-
-    for url in urls:
+    for url in urls[:5]:  # to test on less articles
         print(f"Scraping {url}")
-        html, md = scrape_article_selenium(driver, url)
+        if args.paid:
+            html, md = scrape_article_selenium(driver, url)
+        else:
+            html, md = scrape_article_requests(url)
         if html and md:
             # Use last part of URL as filename
             base_name = url.rstrip("/").split("/")[-1]
@@ -109,7 +123,8 @@ def main():
     with open(OUTPUT_FILE, "w") as f:
         json.dump(results, f, indent=2)
     print(f"Saved {len(results)} articles to {OUTPUT_FILE}")
-    driver.quit()
+    if driver:
+        driver.quit()
 
 
 if __name__ == "__main__":
