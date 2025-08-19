@@ -34,10 +34,19 @@ def selenium_login():
     return driver
 
 
-def get_article_urls(sitemap_url):
+def get_article_urls_and_lastmod(sitemap_url):
     resp = requests.get(sitemap_url)
     soup = BeautifulSoup(resp.content, "xml")
-    return [loc.text for loc in soup.find_all("loc")]
+    url_to_lastmod = {}
+    urls = []
+    for url_tag in soup.find_all("url"):
+        loc = url_tag.find("loc")
+        lastmod = url_tag.find("lastmod")
+        if loc:
+            url_text = loc.text
+            urls.append(url_text)
+            url_to_lastmod[url_text] = lastmod.text if lastmod else ""
+    return urls, url_to_lastmod
 
 
 def extract_article_html_and_md(soup):
@@ -74,7 +83,7 @@ def main():
         print("Paid mode not enabled. Scraping free content only.")
 
     print("Fetching sitemap...")
-    urls = get_article_urls(SITEMAP_URL)
+    urls, url_to_lastmod = get_article_urls_and_lastmod(SITEMAP_URL)
     print(f"Found {len(urls)} articles.")
     with open("urls.txt", "w") as url_file:
         for url in urls:
@@ -104,8 +113,11 @@ def main():
         else:
             html, md = scrape_article_requests(url)
         if html and md:
-            # Use last part of URL as filename
+            lastmod = url_to_lastmod.get(url, "")
+            date_part = lastmod.split("T")[0] if lastmod else ""
             base_name = url.rstrip("/").split("/")[-1]
+            if date_part:
+                base_name = f"{date_part}_{base_name}"
             html_path = os.path.join(html_dir, base_name + ".html")
             md_path = os.path.join(md_dir, base_name + ".md")
             with open(html_path, "w", encoding="utf-8") as f_html:
