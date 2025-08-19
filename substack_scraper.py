@@ -96,7 +96,8 @@ def main():
         else:
             os.makedirs(folder, exist_ok=True)
     results = []
-    for url in urls[:5]:  # to test on less articles
+    # for url in urls[:5]:  # to test on less articles
+    for url in urls:
         print(f"Scraping {url}")
         if args.paid:
             html, md = scrape_article_selenium(driver, url)
