@@ -1,5 +1,10 @@
 [
   {
+    "url": "https://newsletter.eng-leadership.com/archive",
+    "html_file": "html_files/archive.html",
+    "md_file": "md_files/archive.md"
+  },
+  {
     "url": "https://newsletter.eng-leadership.com/about",
     "html_file": "html_files/about.html",
     "md_file": "md_files/about.md"

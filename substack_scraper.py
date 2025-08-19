@@ -43,14 +43,6 @@ def get_article_urls(sitemap_url):
 def extract_article_html_and_md(soup):
     # Prioritize content containers
     article = soup.find("div", class_="available-content")
-    if not article:
-        article = soup.find("div", class_="body markup")
-    if not article:
-        article = soup.find("article")
-    if not article:
-        article = soup.find("div", class_="body") or soup.find("div", class_="post-content")
-    if not article:
-        return None, None
     html_content = str(article)
     markdown_content = markdownify.markdownify(html_content, heading_style="ATX")
     return html_content, markdown_content

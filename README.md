@@ -38,7 +38,7 @@ Scrape paid or free articles from a Substack newsletter, saving both HTML and Ma
     ```
     python substack_scraper.py --paid
     ```
-    This will launch a browser for you to log in manually (doesn't matter email OTP or with password). After logging in, press Enter in the terminal to continue scraping.
+    This will launch a browser for you to log in manually (doesn't matter email OTP or with password). After solving captcha and logging in, press Enter in the terminal to continue scraping.
 
     **Note:** If paid content does not load correctly, you may need to increase the sleep duration in the script (see `sleep()` in `scrape_article_selenium`). Paid articles sometimes take longer to render after login.
 
